@@ -2,204 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Filament Label Generator</title>
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M5.5,2C3.56,2 2,3.56 2,5.5V18.5C2,20.44 3.56,22 5.5,22H16L22,16V5.5C22,3.56 20.44,2 18.5,2H5.5M5.75,4H18.25A1.75,1.75 0 0,1 20,5.75V15H18.5C16.56,15 15,16.56 15,18.5V20H5.75A1.75,1.75 0 0,1 4,18.25V5.75A1.75,1.75 0 0,1 5.75,4M14.44,6.77C14.28,6.77 14.12,6.79 13.97,6.83C13.03,7.09 12.5,8.05 12.74,9C12.79,9.15 12.86,9.3 12.95,9.44L16.18,8.56C16.18,8.39 16.16,8.22 16.12,8.05C15.91,7.3 15.22,6.77 14.44,6.77M8.17,8.5C8,8.5 7.85,8.5 7.7,8.55C6.77,8.81 6.22,9.77 6.47,10.7C6.5,10.86 6.59,11 6.68,11.16L9.91,10.28C9.91,10.11 9.89,9.94 9.85,9.78C9.64,9 8.95,8.5 8.17,8.5M16.72,11.26L7.59,13.77C8.91,15.3 11,15.94 12.95,15.41C14.9,14.87 16.36,13.25 16.72,11.26Z'/></svg>"
     />
-    <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        background: #f5f5f5;
-        color: #111;
-        margin: 0;
-        padding: 0;
-      }
-
-      /* ── Screen 1 ── */
-      #screen-select {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        gap: 24px;
-        padding: 32px;
-      }
-
-      #screen-select h1 {
-        font-size: 2rem;
-        margin: 0;
-      }
-
-      #screen-select p {
-        margin: 0;
-        color: #555;
-      }
-
-      .select-input {
-        font-size: 1.1rem;
-        padding: 10px 16px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background: #fff;
-        min-width: 260px;
-        cursor: pointer;
-      }
-
-      .btn {
-        font-size: 1rem;
-        padding: 10px 28px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        background: #00ae42;
-        color: #fff;
-        font-weight: 700;
-        transition: background 0.15s;
-      }
-      .btn:hover {
-        background: #009035;
-      }
-      .btn.secondary {
-        background: #e0e0e0;
-        color: #111;
-      }
-      .btn.secondary:hover {
-        background: #ccc;
-      }
-
-      /* ── Screen 2 ── */
-      #screen-labels {
-        display: none;
-      }
-
-      .toolbar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px 24px;
-        background: #fff;
-        border-bottom: 1px solid #ddd;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-      }
-
-      .toolbar h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        flex: 1;
-      }
-
-      #labels-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 12px;
-        padding: 24px;
-      }
-
-      #labels-grid svg {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-
-      #loading {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        font-size: 1.2rem;
-        color: #555;
-      }
-
-      /* ── Print ── */
-      @media print {
-        .no-print {
-          display: none !important;
-        }
-        body {
-          background: #fff;
-        }
-        #labels-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, 44mm);
-          gap: 3mm;
-          padding: 0;
-        }
-        #labels-grid svg {
-          width: 44mm;
-          height: 18mm;
-          box-shadow: none;
-          border-radius: 0;
-          page-break-inside: avoid;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="./app.css" />
+    <style id="label-print-size"></style>
   </head>
   <body>
     <div id="loading">Loading…</div>
 
-    <div id="screen-select" style="display: none">
-      <h1>Filament Label Generator</h1>
-      <select
-        id="brand-select"
-        class="select-input"
-        onchange="onBrandChange()"
-      ></select>
-      <select
-        id="template-select"
-        class="select-input"
-        style="display: none"
-        onchange="onTemplateChange()"
-      ></select>
-      <img
-        id="label-preview"
-        alt="Label preview"
-        style="max-width: 320px; width: 100%; display: none"
-      />
-      <p id="material-label" style="display: none">
-        Select a material to generate printable labels.
-      </p>
-      <select
-        id="material-select"
-        class="select-input"
-        style="display: none"
-      ></select>
-      <button
-        class="btn"
-        id="generate-btn"
-        onclick="generate()"
-        style="display: none"
-      >
-        Generate Labels
+    <div id="app-bar">
+      <button onclick="goHome()" style="background:none;border:none;cursor:pointer;color:inherit;display:flex;align-items:center;gap:12px;padding:0;font:inherit">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5.5,2C3.56,2 2,3.56 2,5.5V18.5C2,20.44 3.56,22 5.5,22H16L22,16V5.5C22,3.56 20.44,2 18.5,2H5.5M5.75,4H18.25A1.75,1.75 0 0,1 20,5.75V15H18.5C16.56,15 15,16.56 15,18.5V20H5.75A1.75,1.75 0 0,1 4,18.25V5.75A1.75,1.75 0 0,1 5.75,4M14.44,6.77C14.28,6.77 14.12,6.79 13.97,6.83C13.03,7.09 12.5,8.05 12.74,9C12.79,9.15 12.86,9.3 12.95,9.44L16.18,8.56C16.18,8.39 16.16,8.22 16.12,8.05C15.91,7.3 15.22,6.77 14.44,6.77M8.17,8.5C8,8.5 7.85,8.5 7.7,8.55C6.77,8.81 6.22,9.77 6.47,10.7C6.5,10.86 6.59,11 6.68,11.16L9.91,10.28C9.91,10.11 9.89,9.94 9.85,9.78C9.64,9 8.95,8.5 8.17,8.5M16.72,11.26L7.59,13.77C8.91,15.3 11,15.94 12.95,15.41C14.9,14.87 16.36,13.25 16.72,11.26Z"
+          />
+        </svg>
+        <h1>Filament spool label generator</h1>
       </button>
-      <p
-        style="font-size: 0.85rem; color: #888; display: none"
-        id="credits"
-      ></p>
       <a
         href="https://github.com/bemble/filament-spool-label-generator"
         target="_blank"
         rel="noopener"
         style="
-          color: #888;
+          margin-left: auto;
+          color: rgba(255, 255, 255, 0.8);
           display: flex;
           align-items: center;
           gap: 6px;
           font-size: 0.85rem;
           text-decoration: none;
         "
-        onmouseover="this.style.color = '#111'"
-        onmouseout="this.style.color = '#888'"
+        onmouseover="this.style.color = '#fff'"
+        onmouseout="this.style.color = 'rgba(255,255,255,0.8)'"
       >
         <svg
           width="16"
@@ -214,169 +58,72 @@
             fill="currentColor"
           />
         </svg>
-        bemble/filament-spool-label-generator
       </a>
+    </div>
+
+    <div id="screen-select" style="display: none">
+
+      <section class="config-section">
+        <h2 class="section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18,15H16V17H18M18,11H16V13H18M20,19H12V17H14V15H12V13H14V11H12V9H20M10,7H8V5H10M10,11H8V9H10M10,15H8V13H10M10,19H8V17H10M6,7H4V5H6M6,11H4V9H6M6,15H4V13H6M6,19H4V17H6M12,7V3H2V21H22V7H12Z"/></svg>
+          Filament maker
+        </h2>
+        <select id="filament-maker-select" class="select-input" onchange="onFilamentMakerChange()"></select>
+        <p id="credits" style="display: none; font-size: 0.85rem; color: #888; margin: 0"></p>
+      </section>
+
+      <section class="config-section" id="section-template" style="display: none">
+        <h2 class="section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20,4V16H4V4H20M20,2H4C2.9,2 2,2.9 2,4V16C2,17.11 2.9,18 4,18H20C21.11,18 22,17.11 22,16V4C22,2.9 21.11,2 20,2M13.96,12.29L11.21,15.83L9.25,13.47L6.5,17H17.5L13.96,12.29Z"/></svg>
+          Template
+        </h2>
+        <div class="template-select-row">
+          <select id="template-select" class="select-input" onchange="onTemplateChange()"></select>
+          <button id="template-info-btn" class="info-btn" onclick="toggleTemplateInfo()" style="display: none" title="How to create a compatible SVG template">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="template-instructions" class="notification is-info is-light instructions-panel" style="display: none">
+          <p style="margin: 0 0 8px">Add <code>data-label</code> attributes to the elements you want filled in:</p>
+          <table>
+            <tr><th>data-label</th><th>Injected content</th></tr>
+            <tr><td><code>material</code></td><td>Material name (brackets stripped)</td></tr>
+            <tr><td><code>color</code> or <code>color_badge</code></td><td>Element fill set to the filament color</td></tr>
+            <tr><td><code>color_name</code></td><td>Color name, e.g. <em>Maroon Red</em></td></tr>
+            <tr><td><code>color_code___id</code></td><td>Code and ID, e.g. <em>10205 - A00-R2</em></td></tr>
+          </table>
+          <p style="margin: 8px 0 0">The SVG <code>width</code> and <code>height</code> attributes set the print size (e.g. <code>width="44mm" height="18mm"</code>).</p>
+        </div>
+        <div class="custom-template" id="custom-template" style="display: none">
+          <input type="file" accept=".svg" id="custom-template-input" onchange="onCustomTemplate(event)" />
+          <p style="margin: 0; font-size: 0.75rem; color: #aaa">Your file is never uploaded — everything stays in your browser.</p>
+          <div id="template-warning" class="notification is-warning is-light" style="display: none"></div>
+        </div>
+        <img id="label-preview" alt="Label preview" style="max-width: 320px; width: 100%; display: none" />
+      </section>
+
+      <section class="config-section" id="section-materials" style="display: none">
+        <h2 class="section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7,5H21V7H7V5M7,13V11H21V13H7M4,4.5A1.5,1.5 0 0,1 5.5,6A1.5,1.5 0 0,1 4,7.5A1.5,1.5 0 0,1 2.5,6A1.5,1.5 0 0,1 4,4.5M4,10.5A1.5,1.5 0 0,1 5.5,12A1.5,1.5 0 0,1 4,13.5A1.5,1.5 0 0,1 2.5,12A1.5,1.5 0 0,1 4,10.5M7,19V17H21V19H7M4,16.5A1.5,1.5 0 0,1 5.5,18A1.5,1.5 0 0,1 4,19.5A1.5,1.5 0 0,1 2.5,18A1.5,1.5 0 0,1 4,16.5Z"/></svg>
+          Materials
+        </h2>
+        <select id="material-select" class="select-input" disabled></select>
+        <button class="btn" id="generate-btn" onclick="generate()">Generate Labels</button>
+      </section>
+
     </div>
 
     <div id="screen-labels">
       <div class="toolbar no-print">
-        <button class="btn secondary" onclick="back()">← Back</button>
         <h2 id="toolbar-title"></h2>
         <button class="btn" onclick="window.print()">Print</button>
       </div>
       <div id="labels-grid"></div>
     </div>
 
-    <script>
-      let BRANDS = [];
-
-      let filaments = [];
-      let svgTemplate = "";
-      let currentBrand = null;
-
-      function currentTemplateUrl() {
-        const templateId = document.getElementById("template-select").value;
-        return currentBrand.templates.find((t) => t.id === templateId).url;
-      }
-
-      function onTemplateChange() {
-        svgTemplate = "";
-        document.getElementById("label-preview").src = currentTemplateUrl();
-      }
-
-      async function onBrandChange() {
-        const brandId = document.getElementById("brand-select").value;
-        currentBrand = BRANDS.find((b) => b.id === brandId);
-        svgTemplate = "";
-
-        const show = (id) => (document.getElementById(id).style.display = "");
-        const hide = (id) =>
-          (document.getElementById(id).style.display = "none");
-
-        if (!currentBrand) {
-          [
-            "template-select",
-            "label-preview",
-            "material-label",
-            "material-select",
-            "generate-btn",
-            "credits",
-          ].forEach(hide);
-          return;
-        }
-
-        const templateSelect = document.getElementById("template-select");
-        templateSelect.innerHTML = "";
-        for (const t of currentBrand.templates) {
-          const opt = document.createElement("option");
-          opt.value = t.id;
-          opt.textContent = t.name;
-          templateSelect.appendChild(opt);
-        }
-        show("template-select");
-
-        ["label-preview", "material-label", "credits"].forEach(show);
-
-        document.getElementById("label-preview").src = currentBrand.templates[0].url;
-
-        const credits = document.getElementById("credits");
-        credits.innerHTML = `Filament database by <a href="${currentBrand.credits.url}" target="_blank" rel="noopener">${currentBrand.credits.label}</a> — thanks!`;
-
-        const materialSelect = document.getElementById("material-select");
-        materialSelect.innerHTML = "";
-        materialSelect.disabled = true;
-
-        const res = await fetch(currentBrand.dataUrl);
-        filaments = await res.json();
-
-        const materials = [...new Set(filaments.map((f) => f.material))].sort();
-        const all = document.createElement("option");
-        all.value = "__all__";
-        all.textContent = "All materials";
-        materialSelect.appendChild(all);
-        for (const m of materials) {
-          const opt = document.createElement("option");
-          opt.value = m;
-          opt.textContent = m;
-          materialSelect.appendChild(opt);
-        }
-        materialSelect.disabled = false;
-        show("material-select");
-        show("generate-btn");
-      }
-
-      async function init() {
-        BRANDS = await fetch("./list.json").then((r) => r.json());
-
-        const brandSelect = document.getElementById("brand-select");
-        const placeholder = document.createElement("option");
-        placeholder.value = "";
-        placeholder.textContent = "Select a brand…";
-        placeholder.disabled = true;
-        placeholder.selected = true;
-        brandSelect.appendChild(placeholder);
-        for (const brand of BRANDS) {
-          const opt = document.createElement("option");
-          opt.value = brand.id;
-          opt.textContent = brand.name;
-          brandSelect.appendChild(opt);
-        }
-
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("screen-select").style.display = "flex";
-      }
-
-      function createLabel(filament) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgTemplate, "image/svg+xml");
-
-        const q = (label) => doc.querySelector(`[data-label="${label}"]`);
-
-        q("material").textContent = filament.material.replace(/\s*[\(\[].*?[\)\]]/g, "").trim();
-
-        const badge = q("color_badge");
-        badge.style.fill = `#${filament.color_hex}`;
-        badge.style.fillOpacity = "1";
-
-        q("color_name").textContent = filament.color_name;
-
-        const codeEl = q("color_code___id");
-        const tspan = codeEl.querySelector("tspan");
-        (tspan || codeEl).textContent = `${filament.code} - ${filament.id}`;
-
-        return document.importNode(doc.documentElement, true);
-      }
-
-      async function generate() {
-        if (!svgTemplate) {
-          svgTemplate = await fetch(currentTemplateUrl()).then((r) => r.text());
-        }
-        const val = document.getElementById("material-select").value;
-        const filtered =
-          val === "__all__"
-            ? filaments
-            : filaments.filter((f) => f.material === val);
-
-        const grid = document.getElementById("labels-grid");
-        grid.innerHTML = "";
-        for (const f of filtered) {
-          grid.appendChild(createLabel(f));
-        }
-
-        const label = val === "__all__" ? "All materials" : val;
-        document.getElementById("toolbar-title").textContent =
-          `${currentBrand.name} — ${label} — ${filtered.length} label${filtered.length !== 1 ? "s" : ""}`;
-
-        document.getElementById("screen-select").style.display = "none";
-        document.getElementById("screen-labels").style.display = "block";
-      }
-
-      function back() {
-        document.getElementById("screen-labels").style.display = "none";
-        document.getElementById("screen-select").style.display = "flex";
-      }
-
-      init();
-    </script>
+    <script src="./generator.js"></script>
+    <script src="./app.js"></script>
   </body>
 </html>

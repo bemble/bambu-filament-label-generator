@@ -8,8 +8,8 @@
       "url": "https://github.com/piitaya/bambu-spoolman-db"
     },
     "templates": [
-      { "id": "default", "name": "Default", "url": "./label-bambulab-default.svg" },
-      { "id": "color-left", "name": "Color left", "url": "./label-bambulab-color-left.svg" }
+      { "id": "default", "name": "Default", "url": "./templates/label-bambulab-default.svg" },
+      { "id": "color-left", "name": "Color left", "url": "./templates/label-bambulab-color-left.svg" }
     ]
   }
 ]
