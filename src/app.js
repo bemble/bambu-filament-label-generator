@@ -108,25 +108,25 @@ async function onFilamentMakerChange() {
   credits.innerHTML = `Filament database by <a href="${currentFilamentMaker.credits.url}" target="_blank" rel="noopener">${currentFilamentMaker.credits.label}</a> — thanks!`;
   show("credits");
 
-  const materialSelect = document.getElementById("material-select");
-  materialSelect.innerHTML = "";
-  materialSelect.disabled = true;
-
   const res = await fetch(currentFilamentMaker.dataUrl);
   filaments = await res.json();
 
   const materials = [...new Set(filaments.map((f) => f.material))].sort();
-  const all = document.createElement("option");
-  all.value = "__all__";
-  all.textContent = "All materials";
-  materialSelect.appendChild(all);
+  const groups = {};
   for (const m of materials) {
-    const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = m;
-    materialSelect.appendChild(opt);
+    const key = m.split(" ")[0].split("-")[0];
+    (groups[key] = groups[key] || []).push(m);
   }
-  materialSelect.disabled = false;
+  const ORDER = ["PLA", "PETG"];
+  const sortedGroups = Object.keys(groups).sort((a, b) => {
+    const ai = ORDER.indexOf(a), bi = ORDER.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  buildMaterialChecklist(document.getElementById("material-select"), groups, sortedGroups);
+  document.getElementById("generate-btn").disabled = true;
   show("section-materials");
 }
 
@@ -158,11 +158,9 @@ async function generate() {
     svgTemplate = await fetch(currentTemplateUrl()).then((r) => r.text());
     applyTemplateDimensions(svgTemplate);
   }
-  const val = document.getElementById("material-select").value;
-  const filtered =
-    val === "__all__"
-      ? filaments
-      : filaments.filter((f) => f.material === val);
+  const checkedBoxes = [...document.querySelectorAll("#material-select .material-cb:checked")];
+  const selected = new Set(checkedBoxes.map(cb => cb.value));
+  const filtered = filaments.filter(f => selected.has(f.material));
 
   selectionMode = false;
   document.getElementById("labels-grid").classList.remove("selection-mode");
@@ -178,13 +176,93 @@ async function generate() {
     grid.appendChild(wrapper);
   }
 
-  const label = val === "__all__" ? "All materials" : val;
+  const total = document.querySelectorAll("#material-select .material-cb").length;
+  const label = selected.size === total ? "All materials"
+    : selected.size === 1 ? [...selected][0]
+    : `${selected.size} materials`;
   document.getElementById("toolbar-title").textContent =
     `${currentFilamentMaker.name} — ${label} — ${filtered.length} label${filtered.length !== 1 ? "s" : ""}`;
 
   document.getElementById("screen-select").style.display = "none";
   document.getElementById("screen-labels").style.display = "block";
   history.pushState({ screen: "labels" }, "", "generation");
+}
+
+function buildMaterialChecklist(container, groups, sortedGroups) {
+  container.innerHTML = "";
+
+  const allLabel = document.createElement("label");
+  allLabel.className = "checklist-all";
+  const allCb = document.createElement("input");
+  allCb.type = "checkbox";
+  allCb.id = "material-cb-all";
+  allCb.checked = false;
+  allLabel.append(allCb, "All materials");
+  container.appendChild(allLabel);
+
+  for (const groupName of sortedGroups) {
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "checklist-group collapsed";
+
+    const groupHeader = document.createElement("div");
+    groupHeader.className = "checklist-group-header";
+
+    const groupCbWrap = document.createElement("label");
+    groupCbWrap.className = "checklist-group-cb";
+    groupCbWrap.addEventListener("click", e => e.stopPropagation());
+    const groupCb = document.createElement("input");
+    groupCb.type = "checkbox";
+    groupCb.checked = false;
+    groupCbWrap.appendChild(groupCb);
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = groupName;
+
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    arrow.setAttribute("viewBox", "0 0 24 24");
+    arrow.setAttribute("width", "16");
+    arrow.setAttribute("height", "16");
+    arrow.setAttribute("fill", "currentColor");
+    arrow.classList.add("fold-arrow");
+    const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arrowPath.setAttribute("d", "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z");
+    arrow.appendChild(arrowPath);
+
+    groupHeader.append(groupCbWrap, nameSpan, arrow);
+    groupHeader.addEventListener("click", () => groupDiv.classList.toggle("collapsed"));
+
+    const itemsDiv = document.createElement("div");
+    itemsDiv.className = "checklist-items";
+    for (const m of groups[groupName]) {
+      const label = document.createElement("label");
+      label.className = "checklist-item";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "material-cb";
+      cb.value = m;
+      cb.checked = false;
+      label.append(cb, m);
+      itemsDiv.appendChild(label);
+    }
+
+    groupDiv.append(groupHeader, itemsDiv);
+    container.appendChild(groupDiv);
+  }
+}
+
+function syncChecklistState(container) {
+  const allCb = container.querySelector("#material-cb-all");
+  container.querySelectorAll(".checklist-group").forEach(groupDiv => {
+    const groupCb = groupDiv.querySelector(".checklist-group-cb input");
+    const items = [...groupDiv.querySelectorAll(".material-cb")];
+    const n = items.filter(c => c.checked).length;
+    groupCb.checked = n > 0;
+    groupCb.indeterminate = n > 0 && n < items.length;
+  });
+  const all = [...container.querySelectorAll(".material-cb")];
+  const n = all.filter(c => c.checked).length;
+  allCb.checked = n > 0;
+  allCb.indeterminate = n > 0 && n < all.length;
 }
 
 function toggleSelectionMode() {
@@ -244,6 +322,25 @@ dropZone.addEventListener("drop", (e) => {
     document.getElementById("custom-template-input").value = "";
     processTemplateFile(file);
   }
+});
+
+document.getElementById("material-select").addEventListener("change", (e) => {
+  const container = document.getElementById("material-select");
+  const allCb = container.querySelector("#material-cb-all");
+  const cb = e.target;
+  if (cb === allCb) {
+    container.querySelectorAll("input[type=checkbox]").forEach(c => {
+      c.checked = allCb.checked;
+      c.indeterminate = false;
+    });
+  } else if (cb.closest(".checklist-group-cb")) {
+    cb.closest(".checklist-group").querySelectorAll(".material-cb").forEach(c => c.checked = cb.checked);
+    syncChecklistState(container);
+  } else {
+    syncChecklistState(container);
+  }
+  const anyChecked = container.querySelectorAll(".material-cb:checked").length > 0;
+  document.getElementById("generate-btn").disabled = !anyChecked;
 });
 
 document.getElementById("labels-grid").addEventListener("click", (e) => {
