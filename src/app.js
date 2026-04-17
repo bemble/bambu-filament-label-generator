@@ -2,6 +2,7 @@ let FILAMENT_MAKERS = [];
 let filaments = [];
 let svgTemplate = "";
 let currentFilamentMaker = null;
+let selectionMode = false;
 
 function currentTemplateUrl() {
   const templateId = document.getElementById("template-select").value;
@@ -163,10 +164,18 @@ async function generate() {
       ? filaments
       : filaments.filter((f) => f.material === val);
 
+  selectionMode = false;
+  document.getElementById("labels-grid").classList.remove("selection-mode");
+  document.getElementById("selection-btn").textContent = "Selection";
+  document.getElementById("selection-count").style.display = "none";
+
   const grid = document.getElementById("labels-grid");
   grid.innerHTML = "";
   for (const f of filtered) {
-    grid.appendChild(createLabel(svgTemplate, f));
+    const wrapper = document.createElement("div");
+    wrapper.className = "label-wrapper";
+    wrapper.appendChild(createLabel(svgTemplate, f));
+    grid.appendChild(wrapper);
   }
 
   const label = val === "__all__" ? "All materials" : val;
@@ -176,6 +185,23 @@ async function generate() {
   document.getElementById("screen-select").style.display = "none";
   document.getElementById("screen-labels").style.display = "block";
   history.pushState({ screen: "labels" }, "", "generation");
+}
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  const grid = document.getElementById("labels-grid");
+  const btn = document.getElementById("selection-btn");
+  const countEl = document.getElementById("selection-count");
+  grid.classList.toggle("selection-mode", selectionMode);
+  btn.textContent = selectionMode ? "Done" : "Selection";
+  countEl.style.display = selectionMode ? "" : "none";
+  if (selectionMode) updateSelectionCount();
+}
+
+function updateSelectionCount() {
+  const total = document.querySelectorAll(".label-wrapper").length;
+  const excluded = document.querySelectorAll(".label-wrapper.excluded").length;
+  document.getElementById("selection-count").textContent = `${total - excluded} / ${total}`;
 }
 
 function back() {
@@ -217,6 +243,15 @@ dropZone.addEventListener("drop", (e) => {
   if (file && file.name.endsWith(".svg")) {
     document.getElementById("custom-template-input").value = "";
     processTemplateFile(file);
+  }
+});
+
+document.getElementById("labels-grid").addEventListener("click", (e) => {
+  if (!selectionMode) return;
+  const wrapper = e.target.closest(".label-wrapper");
+  if (wrapper) {
+    wrapper.classList.toggle("excluded");
+    updateSelectionCount();
   }
 });
 
