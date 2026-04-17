@@ -4,7 +4,7 @@ Bambu Lab offers a huge range of filaments, and many colors are very close to ea
 
 This tool generates printable labels (44mm × 18mm) that show both the **material**, the **color name**, and a **color swatch** for each filament, so you can identify your spools at a glance.
 
-**[Open the app](https://bemble.github.io/bambu-filament-label-generator/)**
+**[Open the app](https://bemble.github.io/filament-spool-label-generator/)**
 
 ![Preview](example.jpeg)
 
