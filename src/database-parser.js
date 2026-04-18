@@ -11,6 +11,7 @@ const DATABASE_PARSERS = {
           .replace(/\s*\{color_name\}/gi, "")
           .replace("\u2122", "") // PolyMaker specific
           .replace("\u00a0", " ") // PolyMaker specific
+          .replace("(NFC)", "- NFC") // Prusament specific
           .trim(),
         color_name: color.name,
         color_hex: color.hex,
