@@ -1,12 +1,12 @@
-let FILAMENT_MAKERS = [];
+let MANUFACTURERS = [];
 let filaments = [];
 let svgTemplate = "";
-let currentFilamentMaker = null;
+let currentManufacturer = null;
 let selectionMode = false;
 
 function currentTemplateUrl() {
   const templateId = document.getElementById("template-select").value;
-  return currentFilamentMaker.templates.find((t) => t.id === templateId).url;
+  return currentManufacturer.templates.find((t) => t.id === templateId).url;
 }
 
 function isCustomTemplate() {
@@ -70,15 +70,15 @@ function onCustomTemplate(event) {
   processTemplateFile(event.target.files[0]);
 }
 
-async function onFilamentMakerChange() {
-  const filamentMakerId = document.getElementById("filament-maker-select").value;
-  currentFilamentMaker = FILAMENT_MAKERS.find((b) => b.id === filamentMakerId);
+async function onManufacturerChange() {
+  const manufacturerId = document.getElementById("manufacturer-select").value;
+  currentManufacturer = MANUFACTURERS.find((b) => b.id === manufacturerId);
   svgTemplate = "";
 
   const show = (id) => (document.getElementById(id).style.display = "");
   const hide = (id) => (document.getElementById(id).style.display = "none");
 
-  if (!currentFilamentMaker) {
+  if (!currentManufacturer) {
     ["section-template", "section-materials", "credits"].forEach(hide);
     return;
   }
@@ -87,7 +87,7 @@ async function onFilamentMakerChange() {
   templateSelect.innerHTML = "";
   const builtInGroup = document.createElement("optgroup");
   builtInGroup.label = "Built-in";
-  for (const t of currentFilamentMaker.templates) {
+  for (const t of currentManufacturer.templates) {
     const opt = document.createElement("option");
     opt.value = t.id;
     opt.textContent = t.name;
@@ -98,7 +98,7 @@ async function onFilamentMakerChange() {
   customGroup.label = "Custom";
   const customOpt = document.createElement("option");
   customOpt.value = "__custom__";
-  customOpt.textContent = "Upload your template...";
+  customOpt.textContent = "Use your template...";
   customGroup.appendChild(customOpt);
   templateSelect.appendChild(customGroup);
 
@@ -106,20 +106,23 @@ async function onFilamentMakerChange() {
   hide("custom-template");
   hide("template-instructions");
   show("label-preview");
-  document.getElementById("label-preview").src = currentFilamentMaker.templates[0].url;
+  document.getElementById("label-preview").src = currentManufacturer.templates[0].url;
   show("section-template");
 
   const credits = document.getElementById("credits");
-  credits.innerHTML = `Filament database by <a href="${currentFilamentMaker.credits.url}" target="_blank" rel="noopener">${currentFilamentMaker.credits.label}</a> — thanks!`;
+  credits.innerHTML = `Filament database by <a href="${currentManufacturer.credits.url}" target="_blank" rel="noopener">${currentManufacturer.credits.label}</a> — thanks!`;
   show("credits");
 
-  const res = await fetch(currentFilamentMaker.dataUrl);
-  filaments = await res.json();
+  const res = await fetch(currentManufacturer.dataUrl);
+  filaments = parseDatabase(currentManufacturer.parser, await res.json()).map((f) => ({
+    ...f,
+    manufacturer: currentManufacturer.name,
+  }));
 
   const materials = [...new Set(filaments.map((f) => f.material))].sort();
   const groups = {};
   for (const m of materials) {
-    const key = m.split(" ")[0].split("-")[0];
+    const key = m.split(" ")[0].split(/[-+]/)[0];
     (groups[key] = groups[key] || []).push(m);
   }
   const ORDER = ["PLA", "PETG"];
@@ -130,26 +133,51 @@ async function onFilamentMakerChange() {
     if (bi !== -1) return 1;
     return a.localeCompare(b);
   });
-  buildMaterialChecklist(document.getElementById("material-select"), groups, sortedGroups);
+  const counts = {};
+  for (const f of filaments) counts[f.material] = (counts[f.material] || 0) + 1;
+  buildMaterialChecklist(document.getElementById("material-select"), groups, sortedGroups, counts);
   updateGenerateBtn();
   show("section-materials");
 }
 
 async function init() {
-  FILAMENT_MAKERS = await fetch("./list.json").then((r) => r.json());
+  const list = await fetch("./list.json").then((r) => r.json());
 
-  const filamentMakerSelect = document.getElementById("filament-maker-select");
+  const spoolmanDb = list["spoolman-db"];
+  const spoolmanManufacturers = (spoolmanDb?.manufacturers_enabled || []).map((entry) => {
+    const id = typeof entry === "string" ? entry : entry.id;
+    const name = typeof entry === "string" ? entry.charAt(0).toUpperCase() + entry.slice(1) : entry.name;
+    return {
+      id,
+      name,
+      parser: "spoolman-db",
+      dataUrl: spoolmanDb.dataUrl.replace("{id}", id),
+      credits: spoolmanDb.credits,
+      templates: spoolmanDb.templates || [],
+    };
+  });
+
+  const customManufacturers = (list.custom || []).map((m) => ({
+    ...m,
+    parser: `custom-${m.id}`,
+  }));
+
+  MANUFACTURERS = [...customManufacturers, ...spoolmanManufacturers].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const manufacturerSelect = document.getElementById("manufacturer-select");
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Select a filament maker…";
+  placeholder.textContent = "Select a manufacturer…";
   placeholder.disabled = true;
   placeholder.selected = true;
-  filamentMakerSelect.appendChild(placeholder);
-  for (const filamentMaker of FILAMENT_MAKERS) {
+  manufacturerSelect.appendChild(placeholder);
+  for (const manufacturer of MANUFACTURERS) {
     const opt = document.createElement("option");
-    opt.value = filamentMaker.id;
-    opt.textContent = filamentMaker.name;
-    filamentMakerSelect.appendChild(opt);
+    opt.value = manufacturer.id;
+    opt.textContent = manufacturer.name;
+    manufacturerSelect.appendChild(opt);
   }
 
   document.getElementById("loading").style.display = "none";
@@ -186,24 +214,15 @@ async function generate() {
     : selected.size === 1 ? [...selected][0]
       : `${selected.size} materials`;
   document.getElementById("toolbar-title").textContent =
-    `${currentFilamentMaker.name} - ${label} - ${filtered.length} label${filtered.length !== 1 ? "s" : ""}`;
+    `${currentManufacturer.name} - ${label} - ${filtered.length} label${filtered.length !== 1 ? "s" : ""}`;
 
   document.getElementById("screen-select").style.display = "none";
   document.getElementById("screen-labels").style.display = "block";
   history.pushState({ screen: "labels" }, "", "generation.html");
 }
 
-function buildMaterialChecklist(container, groups, sortedGroups) {
+function buildMaterialChecklist(container, groups, sortedGroups, counts = {}) {
   container.innerHTML = "";
-
-  const allLabel = document.createElement("label");
-  allLabel.className = "checklist-all";
-  const allCb = document.createElement("input");
-  allCb.type = "checkbox";
-  allCb.id = "material-cb-all";
-  allCb.checked = false;
-  allLabel.append(allCb, "All materials");
-  container.appendChild(allLabel);
 
   for (const groupName of sortedGroups) {
     const groupDiv = document.createElement("div");
@@ -223,6 +242,15 @@ function buildMaterialChecklist(container, groups, sortedGroups) {
     const nameSpan = document.createElement("span");
     nameSpan.textContent = groupName;
 
+    const countSpan = document.createElement("span");
+    countSpan.className = "checklist-group-count";
+    countSpan.textContent = `0/${groups[groupName].length}`;
+
+    const totalColors = groups[groupName].reduce((s, m) => s + (counts[m] ?? 0), 0);
+    const colorCountSpan = document.createElement("span");
+    colorCountSpan.className = "checklist-item-count checklist-group-color-count";
+    colorCountSpan.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2C17.5,2 22,6 22,11A6,6 0 0,1 16,17H14.2C13.9,17 13.7,17.2 13.7,17.5C13.7,17.6 13.8,17.7 13.8,17.8C14.2,18.3 14.5,18.9 14.5,19.5C14.5,20.9 13.4,22 12,22M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C12.3,20 12.5,19.8 12.5,19.5C12.5,19.3 12.4,19.2 12.4,19.1C12,18.6 11.8,18.1 11.8,17.5C11.8,16.1 12.9,15 14.3,15H16A4,4 0 0,0 20,11C20,7.1 16.4,4 12,4M6.5,10C7.3,10 8,10.7 8,11.5C8,12.3 7.3,13 6.5,13C5.7,13 5,12.3 5,11.5C5,10.7 5.7,10 6.5,10M9.5,6C10.3,6 11,6.7 11,7.5C11,8.3 10.3,9 9.5,9C8.7,9 8,8.3 8,7.5C8,6.7 8.7,6 9.5,6M14.5,6C15.3,6 16,6.7 16,7.5C16,8.3 15.3,9 14.5,9C13.7,9 13,8.3 13,7.5C13,6.7 13.7,6 14.5,6M17.5,10C18.3,10 19,10.7 19,11.5C19,12.3 18.3,13 17.5,13C16.7,13 16,12.3 16,11.5C16,10.7 16.7,10 17.5,10Z"/></svg>0/${totalColors}`;
+
     const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     arrow.setAttribute("viewBox", "0 0 24 24");
     arrow.setAttribute("width", "16");
@@ -233,7 +261,7 @@ function buildMaterialChecklist(container, groups, sortedGroups) {
     arrowPath.setAttribute("d", "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z");
     arrow.appendChild(arrowPath);
 
-    groupHeader.append(groupCbWrap, nameSpan, arrow);
+    groupHeader.append(groupCbWrap, nameSpan, countSpan, colorCountSpan, arrow);
     groupHeader.addEventListener("click", () => groupDiv.classList.toggle("collapsed"));
 
     const itemsDiv = document.createElement("div");
@@ -246,7 +274,17 @@ function buildMaterialChecklist(container, groups, sortedGroups) {
       cb.className = "material-cb";
       cb.value = m;
       cb.checked = false;
-      label.append(cb, m);
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = m;
+      nameSpan.style.flex = "1";
+
+      const itemCount = document.createElement("span");
+      itemCount.className = "checklist-item-count";
+      const c = counts[m] ?? 0;
+      cb.dataset.count = c;
+      itemCount.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2C17.5,2 22,6 22,11A6,6 0 0,1 16,17H14.2C13.9,17 13.7,17.2 13.7,17.5C13.7,17.6 13.8,17.7 13.8,17.8C14.2,18.3 14.5,18.9 14.5,19.5C14.5,20.9 13.4,22 12,22M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C12.3,20 12.5,19.8 12.5,19.5C12.5,19.3 12.4,19.2 12.4,19.1C12,18.6 11.8,18.1 11.8,17.5C11.8,16.1 12.9,15 14.3,15H16A4,4 0 0,0 20,11C20,7.1 16.4,4 12,4M6.5,10C7.3,10 8,10.7 8,11.5C8,12.3 7.3,13 6.5,13C5.7,13 5,12.3 5,11.5C5,10.7 5.7,10 6.5,10M9.5,6C10.3,6 11,6.7 11,7.5C11,8.3 10.3,9 9.5,9C8.7,9 8,8.3 8,7.5C8,6.7 8.7,6 9.5,6M14.5,6C15.3,6 16,6.7 16,7.5C16,8.3 15.3,9 14.5,9C13.7,9 13,8.3 13,7.5C13,6.7 13.7,6 14.5,6M17.5,10C18.3,10 19,10.7 19,11.5C19,12.3 18.3,13 17.5,13C16.7,13 16,12.3 16,11.5C16,10.7 16.7,10 17.5,10Z"/></svg>${c}`;
+      label.append(cb, nameSpan, itemCount);
       itemsDiv.appendChild(label);
     }
 
@@ -263,11 +301,12 @@ function syncChecklistState(container) {
     const n = items.filter(c => c.checked).length;
     groupCb.checked = n > 0;
     groupCb.indeterminate = n > 0 && n < items.length;
+    groupDiv.querySelector(".checklist-group-count").textContent = `${n}/${items.length}`;
+    const totalColors = items.reduce((s, c) => s + Number(c.dataset.count || 0), 0);
+    const selectedColors = items.filter(c => c.checked).reduce((s, c) => s + Number(c.dataset.count || 0), 0);
+    const colorBadge = groupDiv.querySelector(".checklist-group-color-count");
+    colorBadge.lastChild.textContent = `${selectedColors}/${totalColors}`;
   });
-  const all = [...container.querySelectorAll(".material-cb")];
-  const n = all.filter(c => c.checked).length;
-  allCb.checked = n > 0;
-  allCb.indeterminate = n > 0 && n < all.length;
 }
 
 function toggleSelectionMode() {
@@ -331,14 +370,8 @@ dropZone.addEventListener("drop", (e) => {
 
 document.getElementById("material-select").addEventListener("change", (e) => {
   const container = document.getElementById("material-select");
-  const allCb = container.querySelector("#material-cb-all");
   const cb = e.target;
-  if (cb === allCb) {
-    container.querySelectorAll("input[type=checkbox]").forEach(c => {
-      c.checked = allCb.checked;
-      c.indeterminate = false;
-    });
-  } else if (cb.closest(".checklist-group-cb")) {
+  if (cb.closest(".checklist-group-cb")) {
     cb.closest(".checklist-group").querySelectorAll(".material-cb").forEach(c => c.checked = cb.checked);
     syncChecklistState(container);
   } else {
