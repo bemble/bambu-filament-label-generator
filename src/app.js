@@ -13,6 +13,12 @@ function isCustomTemplate() {
   return document.getElementById("template-select").value === "__custom__";
 }
 
+function updateGenerateBtn() {
+  const anyMaterial = document.querySelectorAll("#material-select .material-cb:checked").length > 0;
+  const templateReady = !isCustomTemplate() || svgTemplate !== "";
+  document.getElementById("generate-btn").disabled = !anyMaterial || !templateReady;
+}
+
 function toggleTemplateInfo() {
   const panel = document.getElementById("template-instructions");
   panel.style.display = panel.style.display === "none" ? "" : "none";
@@ -27,14 +33,13 @@ function onTemplateChange() {
     document.getElementById("template-info-btn").style.display = "";
     document.getElementById("custom-template").style.display = "";
     document.getElementById("label-preview").style.display = "none";
-    document.getElementById("generate-btn").disabled = true;
   } else {
     document.getElementById("template-info-btn").style.display = "none";
     document.getElementById("custom-template").style.display = "none";
     document.getElementById("label-preview").src = currentTemplateUrl();
     document.getElementById("label-preview").style.display = "";
-    document.getElementById("generate-btn").disabled = false;
   }
+  updateGenerateBtn();
 }
 
 function processTemplateFile(file) {
@@ -56,7 +61,7 @@ function processTemplateFile(file) {
     const blob = new Blob([svgTemplate], { type: "image/svg+xml" });
     document.getElementById("label-preview").src = URL.createObjectURL(blob);
     document.getElementById("label-preview").style.display = "";
-    document.getElementById("generate-btn").disabled = false;
+    updateGenerateBtn();
   };
   reader.readAsText(file);
 }
@@ -126,7 +131,7 @@ async function onFilamentMakerChange() {
     return a.localeCompare(b);
   });
   buildMaterialChecklist(document.getElementById("material-select"), groups, sortedGroups);
-  document.getElementById("generate-btn").disabled = true;
+  updateGenerateBtn();
   show("section-materials");
 }
 
@@ -339,8 +344,7 @@ document.getElementById("material-select").addEventListener("change", (e) => {
   } else {
     syncChecklistState(container);
   }
-  const anyChecked = container.querySelectorAll(".material-cb:checked").length > 0;
-  document.getElementById("generate-btn").disabled = !anyChecked;
+  updateGenerateBtn();
 });
 
 document.getElementById("labels-grid").addEventListener("click", (e) => {
