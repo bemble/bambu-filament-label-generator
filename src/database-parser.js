@@ -9,8 +9,8 @@ const DATABASE_PARSERS = {
         material: entry.name
           .replace(/^\{color_name\}/, entry.material) // Spoolman "{color_name}" specific case
           .replace(/\s*\{color_name\}/gi, "")
-          .replace("\u2122", "") // PolyMaker specific
-          .replace("\u00a0", " ") // PolyMaker specific
+          .replace(/\u2122/g, "") // PolyMaker specific
+          .replace(/\u00a0/g, " ") // PolyMaker specific
           .replace("(NFC)", "- NFC") // Prusament specific
           .trim(),
         color_name: color.name,
