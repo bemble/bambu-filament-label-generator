@@ -50,9 +50,9 @@
           "url": "./templates/label-bambulab-default.svg"
         },
         {
-          "id": "color-left",
-          "name": "Color left",
-          "url": "./templates/label-bambulab-color-left.svg"
+          "id": "r10-punch",
+          "name": "R10 round corner punch",
+          "url": "./templates/label-bambulab-r10-punch.svg"
         }
       ]
     }
