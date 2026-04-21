@@ -38,7 +38,7 @@
     {
       "id": "bambulab",
       "name": "Bambu Lab",
-      "dataUrl": "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json",
+      "dataUrl": "https://raw.githubusercontent.com/piitaya/bambu-filaments/refs/heads/main/filaments.json",
       "credits": {
         "label": "piitaya",
         "url": "https://github.com/piitaya/bambu-spoolman-db"
